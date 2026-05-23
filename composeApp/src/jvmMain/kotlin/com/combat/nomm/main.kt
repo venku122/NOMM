@@ -45,7 +45,7 @@ fun main(args: Array<String>) {
     if (args.isNotEmpty()) {
         initializeSevenZipNative()
         FileKit.init("NOMM")
-        val _ = SettingsManager.config
+        SettingsManager.config
         exitProcess(runCli(args))
     }
     runGui()

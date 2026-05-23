@@ -37,7 +37,7 @@ object Installer {
         hash: String?,
         isBepInEx: Boolean = false, onSuccess: () -> Unit,
     ) {
-        val currentJob = coroutineContext[Job]
+        val currentJob = kotlin.coroutines.coroutineContext[Job]
         val cancelAction: () -> Unit = {
             currentJob?.cancel()
         }

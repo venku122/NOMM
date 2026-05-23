@@ -61,7 +61,7 @@ object NommService {
         lockFileChannel = null
     }
 
-    fun <T> withLock(action: () -> T): T {
+    inline fun <T> withLock(action: () -> T): T {
         if (!acquireLock()) {
             throw IllegalStateException("Cannot acquire lock. Another NOMM instance may be running.")
         }

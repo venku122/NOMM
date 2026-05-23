@@ -20,7 +20,7 @@ abstract class NommCommand(
     override fun run() {
         try {
             runWithJson()
-        } catch (e: CliException) {
+        } catch (e: Exception) {
             if (json) {
                 printError(commandName, e.message ?: "Command failed", "CLI_ERROR")
             }
@@ -82,14 +82,7 @@ class Doctor : NommCommand("doctor", help = "Run diagnostics on the NOMM install
     }
 }
 
-class ConfigCommand : NommCommand("config", help = "Get or set configuration values") {
-    override fun runWithJson() {
-        printError("config", "Use subcommand: 'config get' or 'config set <key> <value>'", "INVALID_ARGS")
-        throw PrintHelpMessage(this)
-    }
-}
-
-class ConfigGet : NommCommand("get", help = "Get all configuration values") {
+class ConfigGet : NommCommand("config-get", help = "Get all configuration values") {
     override fun runWithJson() {
         val config = NommService.getConfig()
         if (json) {
@@ -107,12 +100,11 @@ class ConfigGet : NommCommand("get", help = "Get all configuration values") {
     }
 }
 
-class ConfigSet : NommCommand("set", help = "Set a configuration value. Usage: config set <key> <value>") {
-    val pair by argument("key value", help = "Key and value to set").min(2).max(2)
+class ConfigSet : NommCommand("config-set", help = "Set a configuration value. Usage: nomm config-set <key> <value>") {
+    val key by argument("key", help = "Configuration key to set")
+    val value by argument("value", help = "Value to set")
 
     override fun runWithJson() {
-        val key = pair[0]
-        val value = pair[1]
         try {
             val result = NommService.setConfigValue(key, value)
             if (json) {
@@ -131,7 +123,7 @@ class ConfigSet : NommCommand("set", help = "Set a configuration value. Usage: c
     }
 }
 
-class ManifestRefresh : NommCommand("refresh", help = "Refresh the NOMNOM mod manifest") {
+class ManifestRefresh : NommCommand("manifest-refresh", help = "Refresh the NOMNOM mod manifest") {
     override fun runWithJson() {
         try {
             val result = NommService.refreshManifest()
@@ -188,7 +180,7 @@ class ListCommand : NommCommand("list", help = "List installed mods") {
 }
 
 class Search : NommCommand("search", help = "Search mods in the manifest") {
-    val query by argument("query", help = "Search query").required()
+    val query by argument("query", help = "Search query")
 
     override fun runWithJson() {
         if (NommService.getStatus().manifestModCount == 0) {
@@ -213,7 +205,7 @@ class Search : NommCommand("search", help = "Search mods in the manifest") {
 }
 
 class Show : NommCommand("show", help = "Show detailed information about a mod") {
-    val modId by argument("mod-id", help = "Mod ID to show").required()
+    val modId by argument("mod-id", help = "Mod ID to show")
 
     override fun runWithJson() {
         val mod = NommService.show(modId)
@@ -249,14 +241,7 @@ class Show : NommCommand("show", help = "Show detailed information about a mod")
     }
 }
 
-class BepInExCommand : NommCommand("bepinex", help = "Manage BepInEx installation") {
-    override fun runWithJson() {
-        printError("bepinex", "Use subcommand: 'bepinex install'", "INVALID_ARGS")
-        throw PrintHelpMessage(this)
-    }
-}
-
-class BepInExInstall : NommCommand("install", help = "Install BepInEx into the game folder") {
+class BepInExInstall : NommCommand("bepinex-install", help = "Install BepInEx into the game folder") {
     override fun runWithJson() {
         try {
             val result = NommService.installBepInEx()
@@ -280,8 +265,8 @@ class BepInExInstall : NommCommand("install", help = "Install BepInEx into the g
     }
 }
 
-class Install : NommCommand("install", help = "Install a mod from the manifest") {
-    val modId by argument("mod-id", help = "Mod ID to install").required()
+class Install : NommCommand("mod-install", help = "Install a mod from the manifest") {
+    val modId by argument("mod-id", help = "Mod ID to install")
     val version by option("--version", "-v", help = "Specific version to install")
     val noEnable by option("--no-enable", help = "Do not enable after install").flag()
 
@@ -289,8 +274,8 @@ class Install : NommCommand("install", help = "Install a mod from the manifest")
         try {
             val result = NommService.installMod(modId, version, !noEnable)
             if (json) {
-                printJson("install", true, result)
-            } else {
+                printJson("mod_install", true, result)
+           } else {
                 if (result.wasAlreadyInstalled) {
                     println("${result.modId} v${result.installedVersion ?: "?"} is already installed.")
                 } else {
@@ -299,14 +284,14 @@ class Install : NommCommand("install", help = "Install a mod from the manifest")
             }
         } catch (e: IllegalArgumentException) {
             if (json) {
-                printError("install", e.message ?: "Mod not found", "MOD_NOT_FOUND")
+                printError("mod_install", e.message ?: "Mod not found", "MOD_NOT_FOUND")
             } else {
                 System.err.println("Error: ${e.message}")
             }
             exit(ExitCode.MOD_NOT_FOUND)
         } catch (e: Exception) {
             if (json) {
-                printError("install", e.message ?: "Install failed", "INSTALL_FAILED")
+                printError("mod_install", e.message ?: "Install failed", "INSTALL_FAILED")
             } else {
                 System.err.println("Error: ${e.message}")
             }
@@ -354,7 +339,7 @@ class Update : NommCommand("update", help = "Update a mod or all mods") {
 }
 
 class Enable : NommCommand("enable", help = "Enable a mod") {
-    val modId by argument("mod-id", help = "Mod ID to enable").required()
+    val modId by argument("mod-id", help = "Mod ID to enable")
 
     override fun runWithJson() {
         try {
@@ -376,7 +361,7 @@ class Enable : NommCommand("enable", help = "Enable a mod") {
 }
 
 class Disable : NommCommand("disable", help = "Disable a mod") {
-    val modId by argument("mod-id", help = "Mod ID to disable").required()
+    val modId by argument("mod-id", help = "Mod ID to disable")
 
     override fun runWithJson() {
         try {
@@ -398,7 +383,7 @@ class Disable : NommCommand("disable", help = "Disable a mod") {
 }
 
 class Uninstall : NommCommand("uninstall", help = "Uninstall a mod") {
-    val modId by argument("mod-id", help = "Mod ID to uninstall").required()
+    val modId by argument("mod-id", help = "Mod ID to uninstall")
 
     override fun runWithJson() {
         try {
@@ -420,7 +405,7 @@ class Uninstall : NommCommand("uninstall", help = "Uninstall a mod") {
 }
 
 class AddFile : NommCommand("add-file", help = "Add a mod from a local file") {
-    val path by argument("path", help = "Path to the mod file").required()
+    val path by argument("path", help = "Path to the mod file")
     val move by option("--move", help = "Move file instead of copying").flag()
 
     override fun runWithJson() {
@@ -443,7 +428,7 @@ class AddFile : NommCommand("add-file", help = "Add a mod from a local file") {
 }
 
 class ImportCommand : NommCommand("import", help = "Import mods from a modpack file") {
-    val filePath by argument("path", help = "Path to the modpack .nomm.json file").required()
+    val filePath by argument("path", help = "Path to the modpack .nomm.json file")
 
     override fun runWithJson() {
         try {
@@ -469,7 +454,7 @@ class ImportCommand : NommCommand("import", help = "Import mods from a modpack f
 }
 
 class ExportCommand : NommCommand("export", help = "Export enabled mods to a modpack file") {
-    val filePath by argument("path", help = "Output path for the modpack .nomm.json file").required()
+    val filePath by argument("path", help = "Output path for the modpack .nomm.json file")
 
     override fun runWithJson() {
         try {
