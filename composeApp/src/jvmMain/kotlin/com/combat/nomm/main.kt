@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.combat.nomm.cli.runCli
 import io.github.kdroidfilter.nucleus.aot.runtime.AotRuntime
 import io.github.kdroidfilter.nucleus.darkmodedetector.isSystemInDarkMode
 import io.github.kdroidfilter.nucleus.window.material.MaterialDecoratedWindow
@@ -40,8 +41,19 @@ import kotlin.time.Duration.Companion.seconds
 val LocalWindowState = compositionLocalOf<WindowState> { error("No WindowState provided") }
 
 
+fun main(args: Array<String>) {
+    if (args.isNotEmpty()) {
+        initializeSevenZipNative()
+        FileKit.init("NOMM")
+        val _ = SettingsManager.config
+        exitProcess(runCli(args))
+    }
+    runGui()
+}
+
+
 @OptIn(FlowPreview::class, ExperimentalComposeUiApi::class)
-fun main() {
+private fun runGui() {
     if (AotRuntime.isTraining()) {
         Thread({
             Thread.sleep(45000)

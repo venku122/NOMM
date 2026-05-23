@@ -18,6 +18,8 @@ materialKolor = "5.0.0-alpha07"
 
 multiplatform-nav3-ui = "1.1.1"
 
+clikt = "5.0.2"
+
 [libraries]
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
@@ -63,6 +65,9 @@ nucleus-energy = { group = "io.github.kdroidfilter", name = "nucleus.energy-mana
 nucleus-notif-win = { group = "io.github.kdroidfilter", name = "nucleus.notification-windows", version.ref = "nucleus" }
 nucleus-notif-mac = { group = "io.github.kdroidfilter", name = "nucleus.notification-macos", version.ref = "nucleus" }
 nucleus-notif-linux = { group = "io.github.kdroidfilter", name = "nucleus.notification-linux", version.ref = "nucleus" }
+
+clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
+mordant = { module = "com.github.ajalt.mordant:mordant", version = "3.0.2" }
 
 [plugins]
 composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "composeHotReload" }

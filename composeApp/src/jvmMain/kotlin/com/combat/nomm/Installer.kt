@@ -28,48 +28,56 @@ object Installer {
         isBepInEx: Boolean = false, onSuccess: () -> Unit,
     ) {
         scope.launch {
-            val currentJob = coroutineContext[Job]
-            val cancelAction: () -> Unit = {
-                currentJob?.cancel()
-            }
+            installModBlocking(modId, url, dir, hash, isBepInEx, onSuccess)
+        }
+    }
 
-            updateState(modId, TaskState(TaskState.Phase.DOWNLOADING, 0f, true, cancelAction), isBepInEx)
+    suspend fun installModBlocking(
+        modId: String, url: String, dir: File,
+        hash: String?,
+        isBepInEx: Boolean = false, onSuccess: () -> Unit,
+    ) {
+        val currentJob = coroutineContext[Job]
+        val cancelAction: () -> Unit = {
+            currentJob?.cancel()
+        }
 
-            val mutex = locks.getOrPut(modId) { Mutex() }
+        updateState(modId, TaskState(TaskState.Phase.DOWNLOADING, 0f, true, cancelAction), isBepInEx)
 
-            try {
-                mutex.withLock {
+        val mutex = locks.getOrPut(modId) { Mutex() }
 
-                    val bytes = downloadWithRetry(modId, url, isBepInEx, cancelAction) { downloadedBytes ->
-                        if (hash == null || SettingsManager.config.value.ignoreHashMismatch) true else {
-                            val expected = hash.removePrefix("sha256:").hexToByteArray()
-                            val algorithm = MessageDigest.getInstance("SHA-256")
-                            algorithm.digest(downloadedBytes).contentEquals(expected)
-                        }
+        try {
+            mutex.withLock {
+
+                val bytes = downloadWithRetry(modId, url, isBepInEx, cancelAction) { downloadedBytes ->
+                    if (hash == null || SettingsManager.config.value.ignoreHashMismatch) true else {
+                        val expected = hash.removePrefix("sha256:").hexToByteArray()
+                        val algorithm = MessageDigest.getInstance("SHA-256")
+                        algorithm.digest(downloadedBytes).contentEquals(expected)
                     }
-
-                    updateState(modId, TaskState(TaskState.Phase.EXTRACTING, null, true, cancelAction), isBepInEx)
-
-                    withContext(Dispatchers.IO) {
-                        if (!dir.exists()) dir.mkdirs()
-                        extract(bytes, url, dir, isBepInEx)
-                    }
-
-                    onSuccess()
                 }
-            } catch (e: CancellationException) {
-                withContext(NonCancellable + Dispatchers.IO) {
-                    dir.deleteRecursively()
+
+                updateState(modId, TaskState(TaskState.Phase.EXTRACTING, null, true, cancelAction), isBepInEx)
+
+                withContext(Dispatchers.IO) {
+                    if (!dir.exists()) dir.mkdirs()
+                    extract(bytes, url, dir, isBepInEx)
                 }
-                throw e
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(NonCancellable + Dispatchers.IO) {
-                    dir.deleteRecursively()
-                }
-            } finally {
-                clearStatus(modId, isBepInEx)
+
+                onSuccess()
             }
+        } catch (e: CancellationException) {
+            withContext(NonCancellable + Dispatchers.IO) {
+                dir.deleteRecursively()
+            }
+            throw e
+        } catch (e: Exception) {
+            e.printStackTrace()
+            withContext(NonCancellable + Dispatchers.IO) {
+                dir.deleteRecursively()
+            }
+        } finally {
+            clearStatus(modId, isBepInEx)
         }
     }
 

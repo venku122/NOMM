@@ -22,25 +22,35 @@ object RepoMods {
 
     fun fetchManifest() {
         scope.launch {
-            if (!mutex.tryLock()) return@launch
-            try {
-                isLoading.value = true
-                val fetched = if (SettingsManager.config.value.fakeManifest) {
-                    fetchFakeManifest()
-                } else {
-                    NetworkClient.fetchManifest() ?: SettingsManager.cachedManifest.value.manifest
-                }
-                mods.value = fetched.distinctBy { it.id }
-            } finally {
-                isLoading.value = false
-                mutex.unlock()
+            fetchManifestBlocking()
+        }
+    }
+
+    suspend fun fetchManifestBlocking() {
+        if (!mutex.tryLock()) return
+        try {
+            isLoading.value = true
+            val fetched = if (SettingsManager.config.value.fakeManifest) {
+                fetchFakeManifest()
+            } else {
+                NetworkClient.fetchManifest() ?: SettingsManager.cachedManifest.value.manifest
             }
+            mods.value = fetched.distinctBy { it.id }
+        } finally {
+            isLoading.value = false
+            mutex.unlock()
         }
     }
 
     val launchOptionDialog = MutableStateFlow(false)
 
     fun downloadBepInEx() {
+        scope.launch {
+            downloadBepInExBlocking()
+        }
+    }
+
+    suspend fun downloadBepInExBlocking() {
         val url = "https://github.com/BepInEx/BepInEx/releases/download/v5.4.23.4/BepInEx_win_x64_5.4.23.4.zip"
         val gameFolder = SettingsManager.gameFolder ?: return
         if (LocalMods.isBepInExInstalled.value) {
@@ -61,15 +71,21 @@ object RepoMods {
             [Chainloader]
             HideManagerGameObject = true
             """.trimIndent())
-        Installer.installMod("BepInEx", url, gameFolder,null, true) {
+        Installer.installModBlocking("BepInEx", url, gameFolder, null, true) {
             LocalMods.refresh()
         }
     }
 
     fun installMod(id: String, version: Version?, processing: MutableSet<String> = mutableSetOf()) {
+        scope.launch {
+            installModBlocking(id, version, processing)
+        }
+    }
+
+    suspend fun installModBlocking(id: String, version: Version?, processing: MutableSet<String> = mutableSetOf()) {
         val bepinexFolder = SettingsManager.bepInExFolder
         if (bepinexFolder == null || !bepinexFolder.exists()) {
-            downloadBepInEx()
+            downloadBepInExBlocking()
             return
         }
 
@@ -87,8 +103,8 @@ object RepoMods {
             if (currentVersion != null && currentVersion == targetArtifact.version) return
         }
 
-        targetArtifact.dependencies.forEach { installMod(it.id, null, processing) }
-        targetArtifact.extends?.let { installMod(it.id, null, processing) }
+        targetArtifact.dependencies.forEach { installModBlocking(it.id, null, processing) }
+        targetArtifact.extends?.let { installModBlocking(it.id, null, processing) }
 
         installedMod?.disable()
 
@@ -98,7 +114,7 @@ object RepoMods {
         if (dir.exists()) dir.deleteRecursively()
         if (!dir.mkdirs()) return
 
-        Installer.installMod(extension.id, targetArtifact.downloadUrl, dir, targetArtifact.hash) {
+        Installer.installModBlocking(extension.id, targetArtifact.downloadUrl, dir, targetArtifact.hash) {
             val metaData = ModMeta(
                 id = extension.id,
                 artifact = targetArtifact,
