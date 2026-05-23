@@ -1,85 +1,164 @@
 package com.combat.nomm.cli
 
-import com.combat.nomm.BuildKonfig
-import com.combat.nomm.core.NommService
+import com.combat.nomm.core.CliEnvelope
+import com.combat.nomm.core.CliError
+import com.combat.nomm.core.StatusResult
+import com.combat.nomm.core.RepoModDto
+import com.combat.nomm.ModMeta
+import com.combat.nomm.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
-object CliRunner {
-    fun run(args: Array<String>): Int {
-        if (args.isEmpty()) {
-            return 2 // Invalid arguments
-        }
+private val json = Json { prettyPrint = true }
 
-        val command = args[0]
-        val remaining = args.drop(1).toTypedArray()
-
-        return when (command) {
-            "--version" -> {
-                println(BuildKonfig.VERSION)
-                0
-            }
-            "--help", "-h", "help" -> {
-                printHelp()
-                0
-            }
-            "status" -> Status.run(remaining)
-            "doctor" -> Doctor.run(remaining)
-            "config-get" -> ConfigGet.run(remaining)
-            "config-set" -> ConfigSet.run(remaining)
-            "manifest-refresh" -> ManifestRefresh.run(remaining)
-            "list" -> ListCommand.run(remaining)
-            "search" -> Search.run(remaining)
-            "show" -> Show.run(remaining)
-            "bepinex-install" -> BepInExInstall.run(remaining)
-            "mod-install" -> Install.run(remaining)
-            "update" -> Update.run(remaining)
-            "enable" -> Enable.run(remaining)
-            "disable" -> Disable.run(remaining)
-            "uninstall" -> Uninstall.run(remaining)
-            "add-file" -> AddFile.run(remaining)
-            "import" -> ImportCommand.run(remaining)
-            "export" -> ExportCommand.run(remaining)
-            else -> {
-                printError("Unknown command: $command")
-                printHelp()
-                2
-            }
-        }
+fun runCli(args: Array<String>): Int {
+    if (args.isEmpty()) {
+        printHelp()
+        return 0
     }
 
-    private fun printHelp() {
-        println("NOMM v${BuildKonfig.VERSION} - Headless CLI")
-        println()
-        println("Usage: nomm <command> [options]")
-        println()
-        println("Commands:")
-        println("  status          Show overall status")
-        println("  doctor          Run diagnostics")
-        println("  config-get      Get configuration")
-        println("  config-set      Set configuration (config-set <key> <value>)")
-        println("  manifest-refresh Refresh the mod manifest")
-        println("  list            List installed mods")
-        println("  search          Search mods (search <query>)")
-        println("  show            Show mod details (show <mod-id>)")
-        println("  bepinex-install Install BepInEx")
-        println("  mod-install     Install a mod (mod-install <mod-id>)")
-        println("  update          Update a mod (update <mod-id> or update --all)")
-        println("  enable          Enable a mod (enable <mod-id>)")
-        println("  disable         Disable a mod (disable <mod-id>)")
-        println("  uninstall       Uninstall a mod (uninstall <mod-id>)")
-        println("  add-file        Add a local mod file (add-file <path>)")
-        println("  import          Import a modpack (import <path>)")
-        println("  export          Export enabled mods (export <path>)")
-        println()
-        println("Options:")
-        println("  --version       Print version")
-        println("  --help, -h      Print this help")
+    val (jsonOutput, cleanArgs) = parseJsonFlag(args)
+    
+    val command = cleanArgs.firstOrNull() ?: run {
+        printHelp()
+        return 0
     }
 
-    private fun printError(message: String) {
-        System.err.println("Error: $message")
+    return when (command) {
+        "--version", "-v" -> {
+            if (jsonOutput) {
+                println(json.encodeToString(CliEnvelope<Any?>(ok = true, "version", data = mapOf("version" to BuildKonfig.VERSION))))
+            } else {
+                println("NOMM version ${BuildKonfig.VERSION}")
+            }
+            0
+        }
+        "--help", "-h" -> {
+            printHelp()
+            0
+        }
+        "status" -> runCommand({ CliCommands.status() }, jsonOutput)
+        "doctor" -> runCommand({ CliCommands.doctor() }, jsonOutput)
+        "config-get" -> runCommand({ CliCommands.configGet() }, jsonOutput)
+        "config-set" -> runCommand({ CliCommands.configSet(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        "manifest-refresh" -> runCommand({ CliCommands.manifestRefresh() }, jsonOutput)
+        "list" -> runCommand({ CliCommands.list() }, jsonOutput)
+        "search" -> runCommand({ CliCommands.search(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        "show" -> runCommand({ CliCommands.show(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        "bepinex-install" -> runCommand({ CliCommands.bepinexInstall() }, jsonOutput)
+        "mod-install" -> runCommand({ CliCommands.modInstall(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        "update" -> runCommand({ CliCommands.update(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        "enable" -> runCommand({ CliCommands.enable(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        "disable" -> runCommand({ CliCommands.disable(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        "uninstall" -> runCommand({ CliCommands.uninstall(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        "add-file" -> runCommand({ CliCommands.addFile(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        "import" -> runCommand({ CliCommands.import(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        "export" -> runCommand({ CliCommands.export(cleanArgs.drop(1).toTypedArray()) }, jsonOutput)
+        else -> {
+            if (jsonOutput) {
+                println(json.encodeToString(CliEnvelope<Any?>(ok = false, "unknown", error = CliError(code = "INVALID_ARGS", message = "Unknown command: $command"))))
+            } else {
+                System.err.println("Unknown command: $command")
+                printHelp()
+            }
+            2
+        }
     }
 }
 
-fun runCli(args: Array<String>): Int {
-    return CliRunner.run(args)
+private fun parseJsonFlag(args: Array<String>): Pair<Boolean, Array<String>> {
+    val hasJson = args.contains("--json")
+    val cleanArgs = args.filter { it != "--json" }.toTypedArray()
+    return hasJson to cleanArgs
+}
+
+private fun runCommand(command: () -> CliEnvelope<*>, jsonOutput: Boolean): Int {
+    return try {
+        val result = command()
+        if (jsonOutput) {
+            println(json.encodeToString(result))
+        } else {
+            printPlainResult(result)
+        }
+        if (result.ok) 0 else 1
+    } catch (e: Exception) {
+        val result = CliEnvelope<Any?>(ok = false, "error", error = CliError(code = "ERROR", message = e.message ?: "Unknown error"))
+        if (jsonOutput) {
+            println(json.encodeToString(result))
+        } else {
+            System.err.println("Error: ${e.message}")
+        }
+        1
+    }
+}
+
+private fun printPlainResult(result: CliEnvelope<*>) {
+    if (result.ok) {
+        val data = result.data
+        when {
+            data is StatusResult -> {
+                println("Game path: ${data.gamePath ?: "Not set"}")
+                println("BepInEx installed: ${data.bepInExInstalled}")
+                println("Installed mods: ${data.installedModCount}")
+            }
+            data is Map<*, *> -> {
+                data.forEach { (k, v) ->
+                    println("$k: $v")
+                }
+            }
+            data is RepoModDto -> {
+                println(json.encodeToString(data))
+            }
+            data is ModMeta -> {
+                println(json.encodeToString(data))
+            }
+            data is Boolean -> {
+                println("Success: $data")
+            }
+            data is List<*> -> {
+                data.forEach { item ->
+                    println(json.encodeToString(item))
+                }
+            }
+            data != null -> {
+                println(data.toString())
+            }
+            else -> {
+                println("Success")
+            }
+        }
+    } else {
+        System.err.println("Error: ${result.error?.message}")
+    }
+}
+
+private fun printHelp() {
+    println("""NOMM - Nuclear Option Mod Manager
+Usage: nomm [OPTIONS] <COMMAND> [ARGS...]
+
+Options:
+  --json       Output results in JSON format
+  --version, -v  Show version
+  --help, -h   Show this help message
+
+Commands:
+  status              Show overall status summary
+  doctor              Run diagnostics on the installation
+  config-get          Show all configuration values
+  config-set <key> <value>  Set a configuration value
+  manifest-refresh    Refresh the NOMNOM mod manifest
+  list                List installed mods
+  search <query>      Search mods in the manifest
+  show <mod-id>       Show detailed mod information
+  bepinex-install     Install BepInEx into the game folder
+  mod-install <mod-id>  Install a mod
+  update <mod-id>     Update a specific mod
+  update --all        Update all installed mods
+  enable <mod-id>     Enable a mod
+  disable <mod-id>    Disable a mod
+  uninstall <mod-id>  Uninstall a mod
+  add-file <path>     Add a local mod file
+  import <path>       Import modpack from .nomm.json
+  export <path>       Export enabled mods to .nomm.json
+""")
 }
