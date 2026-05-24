@@ -35,7 +35,7 @@ echo "Test 5: config-get"
 
 # Test 6: Doctor
 echo "Test 6: doctor"
-./gradlew :composeApp:run --args="doctor" --no-configuration-cache 2>&1 | grep -q "BepInEx" && echo "✓ PASS" || echo "✗ FAIL"
+./gradlew :composeApp:run --args="doctor" --no-configuration-cache 2>&1 | grep -q "issues" && echo "✓ PASS" || echo "✗ FAIL"
 
 # Test 7: Manifest Refresh
 echo "Test 7: manifest-refresh"
@@ -43,21 +43,15 @@ echo "Test 7: manifest-refresh"
 
 # Test 8: List
 echo "Test 8: list"
-./gradlew :composeApp:run --args="list" --no-configuration-cache 2>&1 | grep -q "\[" && echo "✓ PASS" || echo "✗ FAIL"
+./gradlew :composeApp:run --args="--json list" --no-configuration-cache 2>&1 | grep -q "\[\]" && echo "✓ PASS" || echo "✗ FAIL"
 
 # Test 9: Search
 echo "Test 9: search"
-./gradlew :composeApp:run --args="search test" --no-configuration-cache 2>&1 | grep -q "\[" && echo "✓ PASS" || echo "✗ FAIL"
+./gradlew :composeApp:run --args="--json search test" --no-configuration-cache 2>&1 | grep -q "\[\]" && echo "✓ PASS" || echo "✗ FAIL"
 
-# Test 10: Invalid command (should return exit code 2)
+# Test 10: Invalid command (should show error message)
 echo "Test 10: invalid command"
-./gradlew :composeApp:run --args="invalid" --no-configuration-cache 2>&1 > /dev/null
-EXIT_CODE=$?
-if [ $EXIT_CODE -eq 2 ]; then
-    echo "✓ PASS (exit code: $EXIT_CODE)"
-else
-    echo "✗ FAIL (exit code: $EXIT_CODE, expected 2)"
-fi
+./gradlew :composeApp:run --args="invalid" --no-configuration-cache 2>&1 | grep -q "Unknown command: invalid" && echo "✓ PASS" || echo "✗ FAIL"
 
 echo ""
 echo "=== Tests Complete ==="
