@@ -1,3 +1,8 @@
+---
+name: nomm-cli
+description: Manage mods for Nuclear Option (NOMM) via the headless CLI. Use when installing, updating, enabling, disabling, or uninstalling mods from the command line.
+---
+
 # NOMM Headless CLI Skill
 
 Use this skill when you need to manage mods via the command line interface (CLI) for NOMM (Nuclear Option Mod Manager).
