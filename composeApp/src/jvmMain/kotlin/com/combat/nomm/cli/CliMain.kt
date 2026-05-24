@@ -72,7 +72,7 @@ private fun parseJsonFlag(args: Array<String>): Pair<Boolean, Array<String>> {
     return hasJson to cleanArgs
 }
 
-private fun runCommand(command: () -> CliEnvelope<*>, jsonOutput: Boolean): Int {
+private inline fun <reified T> runCommand(command: () -> CliEnvelope<T>, jsonOutput: Boolean): Int {
     return try {
         val result = command()
         if (jsonOutput) {
@@ -82,7 +82,7 @@ private fun runCommand(command: () -> CliEnvelope<*>, jsonOutput: Boolean): Int 
         }
         if (result.ok) 0 else 1
     } catch (e: Exception) {
-        val result = CliEnvelope<Any?>(ok = false, "error", error = CliError(code = "ERROR", message = e.message ?: "Unknown error"))
+        val result = CliEnvelope<String>(ok = false, "error", error = CliError(code = "ERROR", message = e.message ?: "Unknown error"))
         if (jsonOutput) {
             println(json.encodeToString(result))
         } else {
