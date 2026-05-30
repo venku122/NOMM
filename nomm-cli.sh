@@ -2,7 +2,8 @@
 # NOMM Headless CLI wrapper
 # Uses the local AppImage build
 
-NOMM_APPIMAGE="/home/tjt/src/llm/mayor/projects/nomm-headless-cli/NOMM/composeApp/build/compose/binaries/main/AppImage/extracted/squashfs-root/bin/NOMM"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NOMM_APPIMAGE="$SCRIPT_DIR/composeApp/build/compose/binaries/main/AppImage/extracted/squashfs-root/bin/NOMM"
 
 if [ ! -f "$NOMM_APPIMAGE" ]; then
     echo "Error: NOMM binary not found at $NOMM_APPIMAGE" >&2

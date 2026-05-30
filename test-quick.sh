@@ -4,8 +4,9 @@ set -e
 # NOMM CLI Quick E2E Test
 # Runs basic command tests via Gradle
 
-NOMM_DIR="/home/tjt/src/llm/mayor/projects/nomm-headless-cli/NOMM"
-SANDBOX_DIR="/home/tjt/src/llm/mayor/projects/nomm-headless-cli/sandbox"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NOMM_DIR="$SCRIPT_DIR"
+SANDBOX_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/sandbox"
 
 echo "=== NOMM CLI Quick E2E Test ==="
 echo ""
